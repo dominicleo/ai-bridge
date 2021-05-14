@@ -1,0 +1,36 @@
+{
+  "name": "ai-bridge",
+  "private": true,
+  "scripts": {
+    "postinstall": "npm run bootstrap",
+    "start": "DUMI_THEME=dumi-theme-mobile dumi dev",
+    "build": "father-build",
+    "lint": "prettier packages/**/*.{ts,tsx} --check",
+    "format": "prettier packages/**/*.{ts,tsx} --write",
+    "ci": "npm run init && npm run lint && npm run build && npm run test",
+    "test": "umi-test --coverage",
+    "bootstrap": "lerna bootstrap --hoist",
+    "prepub": "npm run ci",
+    "pub": "lerna publish --force-publish=*"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged",
+      "pre-push": "npm run test"
+    }
+  },
+  "devDependencies": {
+    "@types/jest": "^26.0.23",
+    "@umijs/test": "^3.0.5",
+    "babel-plugin-version": "^0.2.3",
+    "dumi": "^1.0.14",
+    "dumi-theme-mobile": "^1.1.0",
+    "father-build": "^1.19.4",
+    "gh-pages": "^3.0.0",
+    "husky": "^6.0.0",
+    "lerna": "^4.0.0",
+    "lint-staged": "^11.0.0",
+    "prettier": "^2.3.0",
+    "umi-test": "^1.9.6"
+  }
+}
