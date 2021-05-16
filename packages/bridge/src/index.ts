@@ -4,9 +4,9 @@ import {
   AddPhoneCalendarOptions,
   AddPhoneRepeatCalendarOptions,
   AlertOptions,
-  BrdigeOptions,
   BridgeCallback,
   BridgeInvokeOptions,
+  BridgeOptions,
   BridgeReceiveResponse,
   BrowserOptions,
   ChooseMediaOptions,
@@ -14,13 +14,17 @@ import {
   CompassChangeResponse,
   ConfirmOptions,
   ConfirmResponse,
+  DeviceMotionChangeResponse,
   EventCallback,
   GetAccessTokenResponse,
+  GetBatteryInfoResponse,
   GetClipboardDataResponse,
   GetDeviceInfoResponse,
   GetLocationResponse,
   GetNetworkTypeResponse,
   GetScreenBrightnessResponse,
+  GetSystemInfoResponse,
+  GyroscopeChangeResponse,
   NetworkStatusChangeResponse,
   PageResumeResponse,
   PopWindowOptions,
@@ -45,22 +49,21 @@ import {
 import {
   canUseWindow,
   isFunction,
+  isPlainObject,
   JSONParse,
-  promisify,
   resolveContent,
   resolveOptions,
 } from './utils';
-
 class Bridge {
   /** 调用成功 */
   static readonly SUCCESS: 0;
   /** 无效的方法 */
   static readonly INVALID: 10000;
-  /** 执行超时 */
+  /** 方法执行超时 */
   static readonly TIMEOUT: 10001;
-  /** Native 未支持 */
+  /** Bridge 未支持 */
   static readonly NOT_SUPPORT: 10002;
-  /** 方法被禁止 */
+  /** 方法被禁用 */
   static readonly BAN: 10003;
   /** 方法执行异常 */
   static readonly ERROR: 10005;
@@ -73,12 +76,12 @@ class Bridge {
   // @ts-ignore
   static readonly version = __VERSION__;
   protected uniqueId = 0;
-  protected options: BrdigeOptions;
+  protected options: BridgeOptions;
   protected trackers = new Set();
   protected callbacks = new Map<string, BridgeCallback>();
   protected timer = new Map<string, NodeJS.Timeout>();
-  constructor(options?: Partial<BrdigeOptions>) {
-    this.options = resolveOptions(options, {});
+  constructor(options?: Partial<BridgeOptions>) {
+    this.options = resolveOptions(options, { timeout: 0, timeouts: {} });
     this.init();
   }
   protected init() {
@@ -86,6 +89,36 @@ class Bridge {
     // @ts-ignore
     global.XIAOLI_JSBRIDGE_RECEIVE = global.XiaoliJsbridgeReceive = this.receive;
   }
+  protected getUniqueId(name: string) {
+    const random = Math.random().toString(36).slice(-8);
+    return [name, random, Date.now(), ++this.uniqueId].join('_');
+  }
+  protected clearTimeout(callbackid: string) {
+    const timer = this.timer.get(callbackid);
+    timer && clearTimeout(timer);
+    this.timer.delete(callbackid);
+  }
+  protected logger(...messages: string[]) {
+    if (!this.options.debug) return;
+    const [message, ...args] = messages;
+    console.log(`[Bridge] ${message}`, ...args);
+  }
+  /** 适配器 */
+  protected adapter(options) {
+    if (!canUseWindow) return;
+    if (isFunction(this.options.adapter)) {
+      this.options.adapter(options);
+      return;
+    }
+    // @ts-ignore
+    if (!isFunction(global?.XiaoLiJSBridge?.postMessage)) {
+      // @ts-ignore
+      global?.XiaoLiJSBridge?.postMessage(options);
+      return;
+    }
+    throw new BridgeError('Bridge 未支持', Bridge.NOT_SUPPORT);
+  }
+  /** 调用方法 */
   invoke<R = unknown>({ name, params, onSuccess, onError }: BridgeInvokeOptions<R>) {
     if (!name) throw new BridgeError('请确认方法名称.', Bridge.INVALID);
     const callbackid = this.getUniqueId(name);
@@ -129,7 +162,22 @@ class Bridge {
 
     this.adapter({ callbackid, method: name, params });
   }
-  invokeAsync = promisify(this.invoke);
+  invokeAsync<R = any>(options: BridgeInvokeOptions<R>) {
+    return new Promise<R>((resolve, reject) => {
+      const { onSuccess, onError, ...args } = options;
+      this.invoke<R>({
+        ...args,
+        onSuccess: (response: R) => {
+          isFunction(onSuccess) && onSuccess(response);
+          resolve(response);
+        },
+        onError: (error: BridgeError) => {
+          isFunction(onError) && onError(error);
+          reject(error);
+        },
+      });
+    });
+  }
   /** 接收回调 */
   receive(data: unknown) {
     const { callbackid, response } = JSONParse<BridgeReceiveResponse>(data);
@@ -141,39 +189,17 @@ class Bridge {
 
     task.callback(response);
   }
-  /** 适配器 */
-  adapter(options) {
-    if (!canUseWindow) return;
-    // @ts-ignore
-    if (!isFunction(global?.XiaoLiJSBridge?.postMessage)) {
-      throw new BridgeError('Bridge 未支持', Bridge.NOT_SUPPORT);
-    }
-    // @ts-ignore
-    global.XiaoLiJSBridge.postMessage(options);
-  }
+
   off(name: string, callback: EventCallback) {
+    if (!callback) throw new BridgeError('', 10008);
     this.callbacks.forEach((value, key) => {
-      if (value.name === name && value.params.onSuccess === callback) {
+      if (value.name === name && value.params?.callback === callback) {
         this.callbacks.set(key, { ...value, __CANCEL__: true });
       }
     });
   }
   tracker(callback) {
     this.trackers.add(callback);
-  }
-  protected getUniqueId(name: string) {
-    const random = Math.random().toString(36).slice(-8);
-    return [name, random, Date.now(), ++this.uniqueId].join('_');
-  }
-  protected clearTimeout(callbackid: string) {
-    const timer = this.timer.get(callbackid);
-    timer && clearTimeout(timer);
-    this.timer.delete(callbackid);
-  }
-  protected logger(...messages: string[]) {
-    if (!this.options.debug) return;
-    const [message, ...args] = messages;
-    console.log(`[Bridge] ${message}`, ...args);
   }
   /** 显示提示框 */
   alert(options: ResolveContentOptions<AlertOptions>) {
@@ -239,6 +265,10 @@ class Bridge {
   getAccessToken() {
     return this.invokeAsync<GetAccessTokenResponse>({ name: 'getAccessToken' });
   }
+  /** 获取系统信息 */
+  getSystemInfo() {
+    return this.invokeAsync<GetSystemInfoResponse>({ name: 'getSystemInfo' });
+  }
   /** 获取设备信息 */
   getDeviceInfo() {
     return this.invokeAsync<GetDeviceInfoResponse>({ name: 'getDeviceInfo' });
@@ -260,6 +290,10 @@ class Bridge {
     const params = resolveContent(options, {}, 'value');
     return this.invokeAsync<SetScreenBrightnessOptions>({ name: 'setScreenBrightness', params });
   }
+  /** 获取设备电量 */
+  getBatteryInfo() {
+    return this.invokeAsync<GetBatteryInfoResponse>({ name: 'getBatteryInfo' });
+  }
   /** 获取剪切板内容 */
   getClipboardData() {
     return this.invokeAsync<GetClipboardDataResponse>({ name: 'getClipboardData' });
@@ -268,6 +302,14 @@ class Bridge {
   setClipboardData(options: ResolveContentOptions<SetClipboardDataOptions>) {
     const params = resolveContent(options);
     return this.invokeAsync({ name: 'getClipboardData', params });
+  }
+  /** 设置竖屏 */
+  setPortrait() {
+    return this.invokeAsync({ name: 'setPortrait' });
+  }
+  /** 设置横屏 */
+  setLandscape() {
+    return this.invokeAsync({ name: 'setLandscape' });
   }
   /** 向系统日历添加事件 */
   addPhoneCalendar(options: AddPhoneCalendarOptions) {
@@ -321,7 +363,6 @@ class Bridge {
   vibrateLong() {
     return this.invokeAsync({ name: 'vibrateLong' });
   }
-
   /** 设置导航栏标题及样式 */
   setNavigationBar(options: SetNavigationBarOptions) {
     return this.invokeAsync({ name: 'setNavigationBar', params: options });
@@ -333,7 +374,7 @@ class Bridge {
   }
   /** 关闭当前页面 */
   popWindow(options: ResolveContentOptions<PopWindowOptions, object>) {
-    const params = resolveContent(options, { delta: 1 }, 'data');
+    const params = resolveContent(options, { delta: 1 }, 'data', isPlainObject);
     return this.invokeAsync({ name: 'popWindow', params });
   }
   /** 替换当前页面, 不会产生历史记录 */
@@ -348,11 +389,9 @@ class Bridge {
   }
   /** 监听导航栏标题点击事件 */
   onTitleClick(callback: EventCallback) {
-    return this.invokeAsync({
+    return this.invoke({
       name: 'onTitleClick',
-      onSuccess: () => {
-        isFunction(callback) && callback();
-      },
+      onSuccess: callback,
     });
   }
   /** 移除导航栏标题点击事件的监听 */
@@ -371,21 +410,43 @@ class Bridge {
     this.off('onCompassChange', callback);
   }
 
-  /** 监听重力感应变化 */
+  /** 监听加速度数据变化 */
   onAccelerometerChange<R = AccelerometerChangeResponse>(callback: EventCallback<R>) {
     return this.invoke<R>({
       name: 'onAccelerometerChange',
       onSuccess: callback,
     });
   }
-  /** 移除重力感应变化事件的监听 */
+  /** 移除加速度数据变化事件的监听 */
   offAccelerometerChange<R = AccelerometerChangeResponse>(callback: EventCallback<R>) {
     this.off('onAccelerometerChange', callback);
   }
+  /** 监听设备方向变化 */
+  onDeviceMotionChange<R = DeviceMotionChangeResponse>(callback: EventCallback<R>) {
+    return this.invoke<R>({
+      name: 'onDeviceMotionChange',
+      onSuccess: callback,
+    });
+  }
+  /** 移除设备方向变化的事件的监听 */
+  offDeviceMotionChange<R = DeviceMotionChangeResponse>(callback: EventCallback<R>) {
+    this.off('onDeviceMotionChange', callback);
+  }
+  /** 监听陀螺仪数据变化事件 */
+  onGyroscopeChange<R = GyroscopeChangeResponse>(callback: EventCallback<R>) {
+    return this.invoke<R>({
+      name: 'onGyroscopeChange',
+      onSuccess: callback,
+    });
+  }
+  /** 移除陀螺仪数据变化事件的监听 */
+  offGyroscopeChange<R = GyroscopeChangeResponse>(callback: EventCallback<R>) {
+    this.off('onGyroscopeChange', callback);
+  }
   /**
    * 页面重新可见时, 会触发此事件, 包括下列两种情况
-   * - 从后台被唤起和锁屏界面恢复, 触发 `appResume` 的同时会触发此事件
-   * - 通过 `popWindow` 从下个页面回退, 触发 `pageResume` 的同时会触发此事件
+   * - 从后台被唤起和锁屏界面恢复, 触发 `onAppResume` 的同时会触发此事件
+   * - 通过 `popWindow` 从下个页面回退, 触发 `onPageResume` 的同时会触发此事件
    * 此外, 如果这个页面是通过 `popWindow` 到达, 且传递了 `data` 参数, 此页可以获取到 `data`
    */
   onResume<R = ResumeResponse>(callback: EventCallback<R>) {
@@ -400,8 +461,8 @@ class Bridge {
   }
   /**
    * 当一个页面不可见时, 会触发此事件, 包括下面两种情况
-   * 被压入后台和锁屏, 触发 `appPause` 的同时会触发此事件
-   * 通过 `pushWindow` 打开下个页面, 当前页面触发 `pagePause` 的同时会触发此事件
+   * 被压入后台和锁屏, 触发 `onAppPause` 的同时会触发此事件
+   * 通过 `pushWindow` 打开下个页面, 当前页面触发 `onPagePause` 的同时会触发此事件
    */
   onPause(callback: EventCallback) {
     return this.invoke({
@@ -409,7 +470,7 @@ class Bridge {
       onSuccess: callback,
     });
   }
-  /** 移除 pause 事件的监听 */
+  /** 移除 onPause 事件的监听 */
   offPause(callback: EventCallback) {
     this.off('onPause', callback);
   }
@@ -445,7 +506,7 @@ class Bridge {
       onSuccess: callback,
     });
   }
-  /** 移除 pageResume 事件的监听 */
+  /** 移除 onPageResume 事件的监听 */
   offPageResume<R = PageResumeResponse>(callback: EventCallback<R>) {
     this.off('onPageResume', callback);
   }
@@ -456,7 +517,7 @@ class Bridge {
       onSuccess: callback,
     });
   }
-  /** 移除 pagePause 事件的监听 */
+  /** 移除 onPagePause 事件的监听 */
   offPagePause(callback: EventCallback) {
     this.off('offPagePause', callback);
   }
@@ -482,6 +543,20 @@ class Bridge {
   offUserCaptureScreen(callback: EventCallback) {
     this.off('onUserCaptureScreen', callback);
   }
+  /** 监听实时地理位置变化事件 */
+  onLocationChange<R = GetLocationResponse>(callback: EventCallback<R>) {
+    return this.invoke<R>({
+      name: 'onLocationChange',
+      onSuccess: callback,
+    });
+  }
+  /** 移除实时地理位置变化事件的监听 */
+  offLocationChange<R = GetLocationResponse>(callback: EventCallback<R>) {
+    return this.invoke<R>({
+      name: 'onLocationChange',
+      onSuccess: callback,
+    });
+  }
 }
 
 export class BridgeError extends Error {
@@ -492,17 +567,5 @@ export class BridgeError extends Error {
     this.code = code;
   }
 }
-
-const bridge = new Bridge();
-
-function onChange(response: PageResumeResponse) {
-  response.data.city;
-}
-
-bridge.onPageResume(onChange);
-
-bridge.offPageResume(onChange);
-
-bridge.setScreenBrightness({ value: 1 });
 
 export default Bridge;

@@ -13,6 +13,7 @@
 # Compiled output
 lib
 es
+coverage
 
 # misc
 .DS_Store

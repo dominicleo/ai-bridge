@@ -8,8 +8,5 @@
     "skipLibCheck": true,
     "declaration": true,
     "baseUrl": ".",
-    "paths": {
-      "@ai/bridge": ["src/index.ts"]
-    }
   }
 }

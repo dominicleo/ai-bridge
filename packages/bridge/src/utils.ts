@@ -1,4 +1,4 @@
-import { Promisify, ResolveContentOptions } from './types';
+import { BridgeOptions, Promisify, ResolveContentOptions } from './types';
 
 export const canUseWindow = typeof window !== 'undefined';
 
@@ -19,28 +19,6 @@ export const JSONParse = <T = Record<string, unknown>>(value: unknown) => {
   }
 };
 
-export function promisify<Options = any, SuccessResponse = any, ErrorResponse = any>(
-  api: (options: Options & Promisify<SuccessResponse, ErrorResponse>) => void,
-) {
-  return (options: Options & Promisify<SuccessResponse, ErrorResponse> = {} as Options) => {
-    return new Promise<SuccessResponse>((resolve, reject) => {
-      const args: any = options;
-
-      api({
-        ...args,
-        onSuccess: (response: SuccessResponse) => {
-          isFunction(args) && args.onSuccess(response);
-          resolve(response);
-        },
-        onError: (error: ErrorResponse) => {
-          isFunction(args) && args.onError(error);
-          reject(error);
-        },
-      });
-    });
-  };
-}
-
 export const resolveOptions = <T>(options: T, defaults: Partial<T>) => {
   return { ...defaults, ...options } as Required<T>;
 };
@@ -49,7 +27,8 @@ export function resolveContent<O, T>(
   options: ResolveContentOptions<O, T>,
   defaults?: Partial<O>,
   key = 'content',
+  handler = isString,
 ) {
-  const args = isString(options) ? { [key]: options } : options;
+  const args = handler(options) ? { [key]: options } : options;
   return resolveOptions(args as O, defaults);
 }

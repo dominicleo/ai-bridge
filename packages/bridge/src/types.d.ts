@@ -27,7 +27,7 @@ export interface BridgeCallbackResponse {
   data: Record<string, unknown>;
 }
 
-export interface BrdigeOptions {
+export interface BridgeOptions {
   /**
    * 调试模式
    * @default false
@@ -40,6 +40,8 @@ export interface BrdigeOptions {
   timeout: number;
   /** 方法调用超时时间, 单位 ms */
   timeouts: Record<string, number>;
+  /** 适配器 */
+  adapter?: (options: BridgeInvokeOptions) => void;
 }
 
 export interface BridgeInvokeOptions<R = any> {
@@ -156,6 +158,50 @@ export interface GetAccessTokenResponse {
   token: string | null;
 }
 
+type Authorized = {
+  /** 相册权限 */
+  album: boolean;
+  /** 相机权限 */
+  camera: boolean;
+  /** 定位权限 */
+  location: boolean;
+  /** 麦克风权限 */
+  microphone: boolean;
+  /** 通知权限 */
+  notification: boolean;
+};
+
+export interface GetSystemInfoResponse {
+  /** 设备品牌 */
+  brand: string;
+  /** 设备型号, 新机型刚推出一段时间会显示 'unknown' */
+  model: string;
+  /** 系统语言 */
+  language: string;
+  /** 应用版本号 */
+  version: string;
+  /** 操作系统及版本 */
+  system: string;
+  /** 客户端平台 */
+  platform: string;
+  /** 用户字体大小, 单位 px */
+  fontSize: number;
+  /** 状态栏的高度, 单位 px */
+  statusBarHeight: number;
+  /** 授权信息 */
+  authorized: Authorized;
+  /** 系统当前主题 */
+  theme: 'light' | 'dark';
+  /** 是否为 Debug 模式 */
+  debug: boolean;
+  /**
+   * 设备方向
+   * - `portrait` 竖屏
+   * - `landscape` 横屏
+   */
+  orientation: 'portrait' | 'landscape';
+}
+
 export interface GetDeviceInfoResponse {
   /** 设备的国际移动设备身份码 */
   imei: string;
@@ -169,6 +215,22 @@ export interface GetDeviceInfoResponse {
   uuid: string;
 }
 
+type Location = {
+  /** 纬度, 范围为 -90~90, 负数表示南纬 */
+  latitude: number;
+  /** 经度, 范围为 -180~180, 负数表示西经 */
+  longitude: number;
+  /** 速度, 单位 m/s */
+  speed: number;
+  /** 位置的精确度 */
+  accuracy: number;
+  /** 高度, 单位 m */
+  altitude: number;
+  /** 垂直精度, 单位 m (Android 无法获取, 返回 0) */
+  verticalAccuracy: number;
+  /** 水平精度, 单位 m */
+  horizontalAccuracy: number;
+};
 export interface GetLocationResponse {
   /** 纬度, 范围为 -90~90, 负数表示南纬 */
   latitude: number;
@@ -182,7 +244,7 @@ export interface GetLocationResponse {
   altitude: number;
   /** 垂直精度, 单位 m (Android 无法获取, 返回 0) */
   verticalAccuracy: number;
-  /** 水平精度，单位 m */
+  /** 水平精度, 单位 m */
   horizontalAccuracy: number;
 }
 
@@ -194,6 +256,13 @@ export interface SetScreenBrightnessOptions {
 export interface GetScreenBrightnessResponse {
   /** 屏幕亮度值, 范围 0 ~ 1, 0 最暗, 1 最亮 */
   value: number;
+}
+
+export interface GetBatteryInfoResponse {
+  /** 设备电量, 范围 1 - 100 */
+  level: number;
+  /** 是否正在充电中 */
+  isCharging: boolean;
 }
 
 export interface GetClipboardDataResponse {
@@ -428,10 +497,30 @@ export interface AccelerometerChangeResponse {
   z: number;
 }
 
+export interface DeviceMotionChangeResponse {
+  /** 当手机坐标 x/y 和地球 x/y 重合时, 绕着 z 轴转动的夹角为 alpha, 范围值为 [0, 2 * PI], 逆时针转动为正 */
+  alpha: number;
+  /** 当手机坐标 y/z 和地球 y/z 重合时, 绕着 x 轴转动的夹角为 beta, 范围值为 [-1 * PI, PI], 顶部朝着地球表面转动为正, 也有可能朝着用户为正 */
+  beta: number;
+  /** 当手机 x/z 和地球 x/z 重合时, 绕着 Y 轴转动的夹角为 gamma。范围值为 [-1 * PI/2, PI / 2], 右边朝着地球表面转动为正 */
+  gamma: number;
+}
+
+export interface GyroscopeChangeResponse {
+  /** x 轴的角速度 */
+  x: number;
+  /** y 轴的角速度 */
+  y: number;
+  /** z 轴的角速度 */
+  z: number;
+}
+
 export interface ResumeResponse<T = Record<string, unknown>> {
+  /** 通过 `popWindow` 传递的 `data` 参数 */
   data: T;
 }
 
 export interface PageResumeResponse<T = Record<string, unknown>> {
+  /** 通过 `popWindow` 传递的 `data` 参数 */
   data: T;
 }
