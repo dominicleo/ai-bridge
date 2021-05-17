@@ -6,34 +6,7 @@ title: 调用方法
 
 ## invoke
 
-```tsx | pure
-import React from 'react';
-import { Button, Toast } from '@ai/mobile';
-import Bridge from '@ai/bridge';
-
-const bridge = new Bridge();
-
-const Page = () => {
-
-  const onClick = async () => {
-    bridge.invoke({
-      name: 'alert',
-      params: {
-        content: 'invoke alert'
-      },
-      onSuccess(){
-        Toast.info({ content: '你点击了确定按钮' })
-      }
-    });
-  }
-  
-  return (
-    <>
-      <Button onPress={onClick}>invoke</Button>
-    </>
-  );
-}
-```
+<code src="./invoke.tsx"></code>
 
 ## BridgeInvokeOptions<R = any>
 

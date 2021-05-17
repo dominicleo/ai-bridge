@@ -271,11 +271,11 @@ const menus = {
       children: [
         {
           title: 'onCompassChange',
-          path: '/api/device/accelerometer/on-compass-change',
+          path: '/api/device/compass/on-compass-change',
         },
         {
           title: 'offCompassChange',
-          path: '/api/device/accelerometer/off-compass-change',
+          path: '/api/device/compass/off-compass-change',
         },
       ],
     },
@@ -385,6 +385,8 @@ export default defineConfig({
   navs: navs,
   theme: {
     '@hd': '0.02rem',
+    '@brand-primary': '#ff4a2a',
+    '@brand-primary-tap': '#ff4a2a',
   },
   targets: {
     ios: 8,
@@ -411,6 +413,16 @@ export default defineConfig({
     }
     `,
   ],
+
   // 用于替换 __VERSION__ pkg.version
-  extraBabelPlugins: ['version'],
+  extraBabelPlugins: [
+    'version',
+    [
+      'import',
+      {
+        libraryName: 'antd-mobile',
+        style: true,
+      },
+    ],
+  ],
 });

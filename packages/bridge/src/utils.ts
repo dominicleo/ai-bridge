@@ -1,4 +1,4 @@
-import { BridgeOptions, Promisify, ResolveContentOptions } from './types';
+import { ResolveContentOptions } from './types';
 
 export const canUseWindow = typeof window !== 'undefined';
 

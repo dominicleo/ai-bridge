@@ -1,10 +1,5 @@
 import { BridgeError } from '.';
 
-export interface Promisify<SuccessResponse, ErrorResponse> {
-  onSuccess?: (response: SuccessResponse) => void;
-  onError?: (error: ErrorResponse) => void;
-}
-
 export type ResolveContentOptions<O, T = string> = O | T;
 
 export interface TrackerCallback {}
@@ -13,10 +8,7 @@ export interface EventCallback<R = unknown> {
   (response?: R): void;
 }
 
-export interface BridgeCallback {
-  name: string;
-  params: any;
-  callback: (response: BridgeCallbackResponse) => void;
+export interface BridgeCallback extends BridgeInvokeOptions {
   timestamp: number;
   __CANCEL__?: boolean;
 }
@@ -41,7 +33,7 @@ export interface BridgeOptions {
   /** 方法调用超时时间, 单位 ms */
   timeouts: Record<string, number>;
   /** 适配器 */
-  adapter?: (options: BridgeInvokeOptions) => void;
+  adapter?: (options: BrdigeAdapterOptions) => void;
 }
 
 export interface BridgeInvokeOptions<R = any> {
@@ -115,25 +107,16 @@ export interface ShowToastOptions {
    * @default 2000
    */
   duration?: number;
-  /** 关闭回调 */
-  onClose?: () => void;
-}
-
-export interface ShowToastResponse {
-  /** 是否关闭 */
-  close: boolean;
+  /**
+   * 是否显示蒙层
+   * @default false
+   */
+  mask?: boolean;
 }
 
 export interface ShowLoadingOptions {
   /** 加载提示内容 */
   content?: string;
-  /** 关闭回调 */
-  onClose?: () => void;
-}
-
-export interface ShowLoadingResponse {
-  /** 是否关闭 */
-  close: boolean;
 }
 
 export interface ShowActionSheetOptions {
@@ -184,10 +167,12 @@ export interface GetSystemInfoResponse {
   system: string;
   /** 客户端平台 */
   platform: string;
-  /** 用户字体大小, 单位 px */
+  /** 用户字体大小, 单位 `px` */
   fontSize: number;
-  /** 状态栏的高度, 单位 px */
+  /** 状态栏的高度, 单位 `px` */
   statusBarHeight: number;
+  /** 导航栏高度, 单位 `px` */
+  navigationBarHeight: number;
   /** 授权信息 */
   authorized: Authorized;
   /** 系统当前主题 */
@@ -214,47 +199,47 @@ export interface GetDeviceInfoResponse {
   /** 设备的唯一标识 */
   uuid: string;
 }
-
-type Location = {
-  /** 纬度, 范围为 -90~90, 负数表示南纬 */
-  latitude: number;
-  /** 经度, 范围为 -180~180, 负数表示西经 */
-  longitude: number;
-  /** 速度, 单位 m/s */
-  speed: number;
-  /** 位置的精确度 */
-  accuracy: number;
-  /** 高度, 单位 m */
-  altitude: number;
-  /** 垂直精度, 单位 m (Android 无法获取, 返回 0) */
-  verticalAccuracy: number;
-  /** 水平精度, 单位 m */
-  horizontalAccuracy: number;
-};
 export interface GetLocationResponse {
-  /** 纬度, 范围为 -90~90, 负数表示南纬 */
+  /** 纬度, 范围为 `-90` ~ `90`, 负数表示南纬 */
   latitude: number;
-  /** 经度, 范围为 -180~180, 负数表示西经 */
+  /** 经度, 范围为 `-180` ~ `180`, 负数表示西经 */
   longitude: number;
-  /** 速度, 单位 m/s */
+  /** 速度, 单位 `m/s` */
   speed: number;
   /** 位置的精确度 */
   accuracy: number;
-  /** 高度, 单位 m */
+  /** 高度, 单位 `m` */
   altitude: number;
-  /** 垂直精度, 单位 m (Android 无法获取, 返回 0) */
+  /** 垂直精度, 单位 `m` */
   verticalAccuracy: number;
-  /** 水平精度, 单位 m */
+  /** 水平精度, 单位 `m` */
+  horizontalAccuracy: number;
+}
+
+export interface LocationChangeResponse {
+  /** 纬度, 范围为 `-90` ~ `90`, 负数表示南纬 */
+  latitude: number;
+  /** 经度, 范围为 `-180` ~ `180`, 负数表示西经 */
+  longitude: number;
+  /** 速度, 单位 `m/s` */
+  speed: number;
+  /** 位置的精确度 */
+  accuracy: number;
+  /** 高度, 单位 `m` */
+  altitude: number;
+  /** 垂直精度, 单位 `m` */
+  verticalAccuracy: number;
+  /** 水平精度, 单位 `m` */
   horizontalAccuracy: number;
 }
 
 export interface SetScreenBrightnessOptions {
-  /** 屏幕亮度值, 范围 0 ~ 1, 0 最暗, 1 最亮 */
+  /** 屏幕亮度值, 范围 `0` ~ `1`, `0` 最暗, `1` 最亮 */
   value: number;
 }
 
 export interface GetScreenBrightnessResponse {
-  /** 屏幕亮度值, 范围 0 ~ 1, 0 最暗, 1 最亮 */
+  /** 屏幕亮度值, 范围 `0` ~ `1`, `0` 最暗, `1` 最亮 */
   value: number;
 }
 
@@ -428,7 +413,7 @@ export interface PreviewMediaOptions {
 
 export interface ScanOptions {
   /**
-   * 扫描目标类型，支持 qr / bar
+   * 扫描目标类型, 支持 qr / bar
    * @default 'qr'
    */
   type: 'qr' | 'bar';
@@ -498,11 +483,11 @@ export interface AccelerometerChangeResponse {
 }
 
 export interface DeviceMotionChangeResponse {
-  /** 当手机坐标 x/y 和地球 x/y 重合时, 绕着 z 轴转动的夹角为 alpha, 范围值为 [0, 2 * PI], 逆时针转动为正 */
+  /** 当手机坐标 `x/y` 和地球 `x/y` 重合时, 绕着 `z` 轴转动的夹角为 `alpha`, 范围值为 `[0, 2 * PI)`, 逆时针转动为正 */
   alpha: number;
-  /** 当手机坐标 y/z 和地球 y/z 重合时, 绕着 x 轴转动的夹角为 beta, 范围值为 [-1 * PI, PI], 顶部朝着地球表面转动为正, 也有可能朝着用户为正 */
+  /** 当手机坐标 `y/z` 和地球 `y/z` 重合时, 绕着 x 轴转动的夹角为 `beta`, 范围值为 `[-1 * PI, PI) `, 顶部朝着地球表面转动为正, 也有可能朝着用户为正 */
   beta: number;
-  /** 当手机 x/z 和地球 x/z 重合时, 绕着 Y 轴转动的夹角为 gamma。范围值为 [-1 * PI/2, PI / 2], 右边朝着地球表面转动为正 */
+  /** 当手机 `x/z` 和地球 `x/z` 重合时, 绕着 Y 轴转动的夹角为 `gamma`, 范围值为 `[-1 * PI / 2, PI / 2)`, 右边朝着地球表面转动为正 */
   gamma: number;
 }
 

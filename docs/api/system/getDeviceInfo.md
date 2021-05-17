@@ -3,37 +3,7 @@ title: 获取设备信息
 ---
 # 获取设备信息
 
-## getDeviceInfo
-
-```tsx | pure
-import React from 'react';
-import { Button, Toast } from '@ai/mobile';
-import Bridge, { BridgeError } from '@ai/bridge';
-
-const bridge = new Bridge();
-
-const Page = () => {
-  const [state, setState] = useState({});
-  const onClick = async () => {
-    try {
-      const response = await bridge.getDeviceInfo();
-      setState(response);
-    } catch(error) {
-      Toast.info({ content: error.message });
-    }
-  }
-  
-  return (
-    <>
-      <Button type='primary' onClick={onClick}>getDeviceInfo</Button>
-      <h3>调试数据<h3>
-      <pre>{JSON.stringify(state)}</pre>
-    </>
-  )
-}
-
-export default Page;
-```
+<code src="./getDeviceInfo.tsx"></code>
 
 
 ## GetDeviceInfoResponse

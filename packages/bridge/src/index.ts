@@ -4,6 +4,7 @@ import {
   AddPhoneCalendarOptions,
   AddPhoneRepeatCalendarOptions,
   AlertOptions,
+  BrdigeAdapterOptions,
   BridgeCallback,
   BridgeInvokeOptions,
   BridgeOptions,
@@ -25,6 +26,7 @@ import {
   GetScreenBrightnessResponse,
   GetSystemInfoResponse,
   GyroscopeChangeResponse,
+  LocationChangeResponse,
   NetworkStatusChangeResponse,
   PageResumeResponse,
   PopWindowOptions,
@@ -41,9 +43,7 @@ import {
   ShowActionSheetOptions,
   ShowActionSheetResponse,
   ShowLoadingOptions,
-  ShowLoadingResponse,
   ShowToastOptions,
-  ShowToastResponse,
   VibrateShortOptions,
 } from './types';
 import {
@@ -54,6 +54,7 @@ import {
   resolveContent,
   resolveOptions,
 } from './utils';
+
 class Bridge {
   /** 调用成功 */
   static readonly SUCCESS: 0;
@@ -98,64 +99,60 @@ class Bridge {
     timer && clearTimeout(timer);
     this.timer.delete(callbackid);
   }
-  protected logger(...messages: string[]) {
+  protected logger(...messages: any[]) {
     if (!this.options.debug) return;
     const [message, ...args] = messages;
     console.log(`[Bridge] ${message}`, ...args);
   }
   /** 适配器 */
-  protected adapter(options) {
+  protected adapter(options: BrdigeAdapterOptions) {
     if (!canUseWindow) return;
+
     if (isFunction(this.options.adapter)) {
       this.options.adapter(options);
       return;
     }
+
     // @ts-ignore
-    if (!isFunction(global?.XiaoLiJSBridge?.postMessage)) {
+    if (isFunction(global?.XiaoLiJSBridge?.postMessage)) {
       // @ts-ignore
       global?.XiaoLiJSBridge?.postMessage(options);
       return;
     }
-    throw new BridgeError('Bridge 未支持', Bridge.NOT_SUPPORT);
+
+    const task = this.callbacks.get(options.callbackid);
+
+    this.handleError('Bridge 未支持', Bridge.NOT_SUPPORT, task?.onError);
+  }
+  protected handleError(message, code, onError: (error: BridgeError) => void) {
+    const error = new BridgeError(message, code);
+    if (isFunction(onError)) {
+      onError(error);
+      return;
+    }
+    throw error;
   }
   /** 调用方法 */
   invoke<R = unknown>({ name, params, onSuccess, onError }: BridgeInvokeOptions<R>) {
-    if (!name) throw new BridgeError('请确认方法名称.', Bridge.INVALID);
+    if (!name) {
+      this.handleError('Bridge 请确认方法名称', Bridge.INVALID, onError);
+      return;
+    }
+
     const callbackid = this.getUniqueId(name);
 
-    const callback = (response) => {
-      this.clearTimeout(callbackid);
-
-      if (response.code === Bridge.SUCCESS) {
-        isFunction(onSuccess) && onSuccess(response.data);
-        return;
-      }
-
-      const error = new BridgeError(response.message, response.code);
-
-      if (isFunction(onError)) {
-        onError(error);
-        return;
-      }
-
-      throw error;
-    };
-
-    this.callbacks.set(callbackid, {
-      name,
-      params,
-      callback,
-      timestamp: Date.now(),
-    });
+    this.callbacks.set(callbackid, { name, params, onSuccess, onError, timestamp: Date.now() });
 
     const timeout = this.options.timeouts[name] || this.options.timeout;
 
     if (timeout > 0) {
+      this.logger('注册定时器', name);
       this.timer.set(
         callbackid,
         setTimeout(() => {
+          this.logger('方法执行超时', name);
           this.callbacks.delete(callbackid);
-          throw new BridgeError(`'${name}' 响应超时`, Bridge.TIMEOUT);
+          this.handleError(`'${name}' 响应超时`, Bridge.TIMEOUT, onError);
         }, timeout),
       );
     }
@@ -183,17 +180,24 @@ class Bridge {
     const { callbackid, response } = JSONParse<BridgeReceiveResponse>(data);
     const task = this.callbacks.get(callbackid);
     if (!task)
-      throw new BridgeError(`回调事件不存在 ${callbackid}`, Bridge.CALLBACK_EVENT_DOES_NOT_EXIST);
+      throw new BridgeError(`回调事件不存在 ${data}`, Bridge.CALLBACK_EVENT_DOES_NOT_EXIST);
 
     if (task.__CANCEL__) return this.logger('事件已被取消监听', task.name);
 
-    task.callback(response);
+    this.clearTimeout(callbackid);
+
+    if (response.code === Bridge.SUCCESS) {
+      isFunction(task.onSuccess) && task.onSuccess(response.data);
+      return;
+    }
+
+    this.handleError(response.message, response.code, task.onError);
   }
 
   off(name: string, callback: EventCallback) {
     if (!callback) throw new BridgeError('', 10008);
     this.callbacks.forEach((value, key) => {
-      if (value.name === name && value.params?.callback === callback) {
+      if (value.name === name && value.onSuccess === callback) {
         this.callbacks.set(key, { ...value, __CANCEL__: true });
       }
     });
@@ -220,16 +224,8 @@ class Bridge {
   }
   /** 显示提示 */
   showToast(options: ResolveContentOptions<ShowToastOptions>) {
-    const { onClose, ...params } = resolveContent(options, { type: 'none', duration: 2000 });
-    return this.invokeAsync<ShowToastResponse>({
-      name: 'showToast',
-      params,
-      onSuccess(response) {
-        if (response.close) {
-          isFunction(onClose) && onClose();
-        }
-      },
-    });
+    const params = resolveContent(options, { type: 'none', duration: 2000 });
+    return this.invokeAsync({ name: 'showToast', params });
   }
   /** 隐藏提示 */
   hideToast() {
@@ -237,16 +233,8 @@ class Bridge {
   }
   /** 显示加载提示 */
   showLoading(options: ResolveContentOptions<ShowLoadingOptions>) {
-    const { onClose, ...params } = resolveContent(options);
-    return this.invokeAsync<ShowLoadingResponse>({
-      name: 'showLoading',
-      params,
-      onSuccess(response) {
-        if (response.close) {
-          isFunction(onClose) && onClose();
-        }
-      },
-    });
+    const params = resolveContent(options);
+    return this.invokeAsync({ name: 'showLoading', params });
   }
   /** 隐藏加载提示 */
   hideLoading() {
@@ -341,7 +329,7 @@ class Bridge {
     });
   }
   /** 扫一扫 */
-  scan(options: ScanOptions) {
+  scan(options?: ScanOptions) {
     return this.invokeAsync<ScanResponse>({
       name: 'scan',
       params: resolveOptions(options, { type: 'qr' }),
@@ -352,8 +340,14 @@ class Bridge {
     return this.invokeAsync({ name: 'setPermission' });
   }
   /** 摇一摇功能, 在摇一摇手机后触发回调后需再次调用 */
-  watchShake() {
-    return this.invokeAsync({ name: 'watchShake' });
+  watchShake(callback: EventCallback) {
+    return this.invoke({
+      name: 'watchShake',
+      onSuccess: () => {
+        isFunction(callback) && callback();
+        this.off('watchShake', callback);
+      },
+    });
   }
   /** 使手机发生较短时间的振动 15ms */
   vibrateShort(options: VibrateShortOptions) {
@@ -373,7 +367,7 @@ class Bridge {
     return this.invokeAsync({ name: 'pushWindow', params });
   }
   /** 关闭当前页面 */
-  popWindow(options: ResolveContentOptions<PopWindowOptions, object>) {
+  popWindow(options?: ResolveContentOptions<PopWindowOptions, object>) {
     const params = resolveContent(options, { delta: 1 }, 'data', isPlainObject);
     return this.invokeAsync({ name: 'popWindow', params });
   }
@@ -398,7 +392,7 @@ class Bridge {
   offTitleClick(callback: EventCallback) {
     this.off('onTitleClick', callback);
   }
-  /** 监听罗盘数据变化的事件 */
+  /** 监听罗盘数据变化 */
   onCompassChange<R = CompassChangeResponse>(callback: EventCallback<R>) {
     return this.invoke<R>({
       name: 'onCompassChange',
@@ -428,11 +422,11 @@ class Bridge {
       onSuccess: callback,
     });
   }
-  /** 移除设备方向变化的事件的监听 */
+  /** 移除设备方向变化事件的监听 */
   offDeviceMotionChange<R = DeviceMotionChangeResponse>(callback: EventCallback<R>) {
     this.off('onDeviceMotionChange', callback);
   }
-  /** 监听陀螺仪数据变化事件 */
+  /** 监听陀螺仪数据变化 */
   onGyroscopeChange<R = GyroscopeChangeResponse>(callback: EventCallback<R>) {
     return this.invoke<R>({
       name: 'onGyroscopeChange',
@@ -521,7 +515,7 @@ class Bridge {
   offPagePause(callback: EventCallback) {
     this.off('offPagePause', callback);
   }
-  /** 监听网络环境发生变化的事件 */
+  /** 监听网络环境发生变化 */
   onNetworkStatusChange<R = NetworkStatusChangeResponse>(callback: EventCallback<R>) {
     return this.invoke<R>({
       name: 'onNetworkStatusChange',
@@ -543,19 +537,16 @@ class Bridge {
   offUserCaptureScreen(callback: EventCallback) {
     this.off('onUserCaptureScreen', callback);
   }
-  /** 监听实时地理位置变化事件 */
-  onLocationChange<R = GetLocationResponse>(callback: EventCallback<R>) {
+  /** 监听实时地理位置变化 */
+  onLocationChange<R = LocationChangeResponse>(callback: EventCallback<R>) {
     return this.invoke<R>({
       name: 'onLocationChange',
       onSuccess: callback,
     });
   }
   /** 移除实时地理位置变化事件的监听 */
-  offLocationChange<R = GetLocationResponse>(callback: EventCallback<R>) {
-    return this.invoke<R>({
-      name: 'onLocationChange',
-      onSuccess: callback,
-    });
+  offLocationChange<R = LocationChangeResponse>(callback: EventCallback<R>) {
+    return this.off('onLocationChange', callback);
   }
 }
 

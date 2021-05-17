@@ -1,35 +1,14 @@
 ---
 title: 关闭当前页面
 ---
-# 关闭当前页面
+### 关闭当前页面
 
-## popWindow
+<code src="./popWindow.tsx"></code>
 
-```tsx | pure
-import React from 'react';
-import { Button, Toast } from '@ai/mobile';
-import Bridge, { BridgeError } from '@ai/bridge';
+### 传递参数
 
-const bridge = new Bridge();
+<code src="./delta.tsx"></code>
 
-const Page = () => {
-  const onClick = async () => {
-    try {
-      await bridge.popWindow();
-    } catch(error) {
-      Toast.info({ content: error.message });
-    }
-  }
-  
-  return (
-    <>
-      <Button type='primary' onClick={onClick}>退出页面</Button>
-    </>
-  )
-}
-
-export default Page;
-```
 
 
 ## PopWindowOptions

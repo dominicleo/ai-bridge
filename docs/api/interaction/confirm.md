@@ -1,34 +1,7 @@
----
-title: 显示确认框
----
 
-# 显示确认框
+## 显示确认框
 
-## alert
-
-```tsx | pure
-import React from 'react';
-import { Button, Toast } from '@ai/mobile';
-import Bridge from '@ai/bridge';
-
-const bridge = new Bridge();
-
-const Page = () => {
-
-  const onClick = () => {
-    bridge.confirm('hello world').then(({ confirm, cancel }) => {
-      confirm && bridge.alert('你点击了确定按钮');
-      cancel && bridge.alert('你点击了取消按钮');
-    });
-  }
-  
-  return (
-    <>
-      <Button onPress={onClick}>confirm</Button>
-    </>
-  );
-}
-```
+<code src="./confirm.tsx"></code>
 
 ## ResolveContentOptions`<ConfirmOptions>`
 

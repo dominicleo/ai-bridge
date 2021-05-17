@@ -5,39 +5,7 @@ title: BridgeError
 
 可以通过 `BridgeError` 判断是否为 Bridge 异常
 
-```tsx | pure
-import React from 'react';
-import { Button } from '@ai/mobile';
-import Bridge, { BridgeError } from '@ai/bridge';
-
-const bridge = new Bridge();
-
-const Page = () => {
-
-  const onClick = async () => {
-    try {
-      await Promise.all([
-        Promise.reject(new BridgeError('无效的方法', Bridge.INVALID))
-        Promise.reject(new Error('custom')),
-      ]);
-    } catch(error) {
-      if (error instanceof BridgeError) {
-       // BridgeError: 无效的方法
-       return;
-      }
-      // Error: custom
-    }
-  }
-  
-  return (
-    <>
-      <Button type='primary' onClick={onClick}>Bridge 异常</Button>
-    </>
-  )
-}
-
-export default Page;
-```
+<code src="./error.tsx"></code>
 
 ## 参数
 

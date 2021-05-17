@@ -1,33 +1,4 @@
----
-title: 显示提示框
----
-
-# 显示提示框
-
-## alert
-
-```tsx | pure
-import React from 'react';
-import { Button, Toast } from '@ai/mobile';
-import Bridge from '@ai/bridge';
-
-const bridge = new Bridge();
-
-const Page = () => {
-
-  const onClick = () => {
-    bridge.alert('hello world').then(() => {
-      bridge.alert('你点击了确定按钮');
-    });
-  }
-  
-  return (
-    <>
-      <Button onPress={onClick}>alert</Button>
-    </>
-  );
-}
-```
+<code src="./alert.tsx"></code>
 
 ## ResolveContentOptions`<AlertOptions>`
 

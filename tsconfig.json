@@ -7,6 +7,10 @@
     "experimentalDecorators": true,
     "skipLibCheck": true,
     "declaration": true,
-    "jsx": "react"
+    "jsx": "react",
+    "baseUrl": ".",
+    "paths": {
+      "@ai/bridge": ["./packages/bridge"]
+    }
   }
 }

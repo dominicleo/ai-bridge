@@ -1,32 +1,38 @@
-import * as  React from 'react';
-import { unstable_Toast as Toast } from '@ant-design/mobile';
-import Bridge from '@ai/bridge';
+import { Button, Toast } from 'antd-mobile';
+import * as React from 'react';
 
-const bridge = new Bridge();
+import Wrapper from '../../components/wrapper';
+import bridge from '../utils/bridge';
 
 const Page = () => {
-  function callback () {
-    bridge.alert('导航栏文字被点击了');
+  const [state, setState] = React.useState<any>();
+
+  function callback(response) {
+    setState(response);
+    Toast.info('导航栏标题被点击了');
   }
 
-  const init =  () => {
+  const register = () => {
     try {
-      bridge.onTitleClick(callback);
+      bridge.onAppPause(callback);
     } catch (error) {
-      Toast.info({ content: error.message });
+      Toast.info(error.message);
     }
-  }
+  };
 
-  React.useEffect(() => {
-    init();
-    return () => {
-      bridge.offTitleClick(callback);
-    }
-  }, []);
+  const unregister = () => {
+    bridge.offAppPause(callback);
+  };
 
+  React.useEffect(() => unregister, []);
 
-
-  return <></>;
-}
+  return (
+    <Wrapper response={state}>
+      <Button type='primary' onClick={register}>
+        注册监听事件
+      </Button>
+    </Wrapper>
+  );
+};
 
 export default Page;
