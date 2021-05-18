@@ -379,8 +379,8 @@ export default defineConfig({
   hash: true,
   mode: 'site',
   locales: [['zh-CN', '中文']],
-  favicon: 'https://avatars0.githubusercontent.com/u/70750872?s=100&v=4',
-  logo: 'https://avatars0.githubusercontent.com/u/70750872?s=100&v=4',
+  favicon: 'https://web-data.zmlearn.com/image/uHg1KcnXqA8R3c4U6VNcCH/logo.png',
+  logo: 'https://web-data.zmlearn.com/image/uHg1KcnXqA8R3c4U6VNcCH/logo.png',
   menus,
   navs: navs,
   theme: {

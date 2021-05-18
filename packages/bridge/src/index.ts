@@ -88,7 +88,7 @@ class Bridge {
   protected init() {
     if (!canUseWindow) return;
     // @ts-ignore
-    global.XIAOLI_JSBRIDGE_RECEIVE = global.XiaoliJsbridgeReceive = this.receive;
+    window.XiaoliJSBridgeReceive = this.receive.bind(this);
   }
   protected getUniqueId(name: string) {
     const random = Math.random().toString(36).slice(-8);
@@ -114,9 +114,16 @@ class Bridge {
     }
 
     // @ts-ignore
-    if (isFunction(global?.XiaoLiJSBridge?.postMessage)) {
+    const AndroidJSBridge = window?.XiaoliJSBridge?.postMessage;
+    if (isFunction(AndroidJSBridge)) {
+      AndroidJSBridge(JSON.stringify(options));
+      return;
+    }
+
+    // @ts-ignore
+    if (isFunction(window?.webkit?.messageHandlers?.XiaoliJSBridge?.postMessage)) {
       // @ts-ignore
-      global?.XiaoLiJSBridge?.postMessage(options);
+      window.webkit.messageHandlers.XiaoliJSBridge.postMessage(JSON.parse(JSON.stringify(options)));
       return;
     }
 

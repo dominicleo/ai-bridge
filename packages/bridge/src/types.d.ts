@@ -13,12 +13,6 @@ export interface BridgeCallback extends BridgeInvokeOptions {
   __CANCEL__?: boolean;
 }
 
-export interface BridgeCallbackResponse {
-  code: number;
-  message: string;
-  data: Record<string, unknown>;
-}
-
 export interface BridgeOptions {
   /**
    * 调试模式
@@ -45,6 +39,12 @@ export interface BridgeInvokeOptions<R = any> {
   onSuccess?: (response: R) => void;
   /** 失败回调 */
   onError?: (error: BridgeError) => void;
+}
+
+export interface BridgeCallbackResponse {
+  code: number;
+  message: string;
+  data: Record<string, unknown>;
 }
 
 export interface BridgeReceiveResponse {
