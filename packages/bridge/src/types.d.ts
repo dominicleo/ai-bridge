@@ -141,19 +141,6 @@ export interface GetAccessTokenResponse {
   token: string | null;
 }
 
-type Authorized = {
-  /** 相册权限 */
-  album: boolean;
-  /** 相机权限 */
-  camera: boolean;
-  /** 定位权限 */
-  location: boolean;
-  /** 麦克风权限 */
-  microphone: boolean;
-  /** 通知权限 */
-  notification: boolean;
-};
-
 export interface GetSystemInfoResponse {
   /** 设备品牌 */
   brand: string;
@@ -173,8 +160,6 @@ export interface GetSystemInfoResponse {
   statusBarHeight: number;
   /** 导航栏高度, 单位 `px` */
   navigationBarHeight: number;
-  /** 授权信息 */
-  authorized: Authorized;
   /** 系统当前主题 */
   theme: 'light' | 'dark';
   /** 是否为 Debug 模式 */
@@ -446,6 +431,8 @@ export interface SetNavigationBarOptions {
 export interface PushWindowOptions {
   /** 页面地址 */
   url: string;
+  /** 导航栏样式 */
+  navigationStyle: 'default' | 'custom';
 }
 
 export interface PopWindowOptions {
@@ -461,6 +448,8 @@ export interface PopWindowOptions {
 export interface RedirectToOptions {
   /** 页面地址 */
   url: string;
+  /** 导航栏样式 */
+  navigationStyle?: 'default' | 'custom';
 }
 
 export interface BrowserOptions {

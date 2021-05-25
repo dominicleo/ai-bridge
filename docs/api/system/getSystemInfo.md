@@ -18,17 +18,6 @@ title: 获取系统信息
 | fontSize | 用户字体大小, 单位 `px` | `number` | - |
 | statusBarHeight | 状态栏的高度, 单位 `px` | `number` | - |
 | navigationBarHeight | 导航栏高度, 单位 `px` | `number` | - |
-| authorized | 授权信息 | `Authorized` | - |
 | theme | 系统当前主题 | `light` \| `dark` | `light` |
 | debug | 是否为 Debug 模式 | `boolean` | false |
 | orientation | 设备方向 | `portrait` \| `landscape` | `portrait` |
-
-## Authorized
-
-| 权限名 | 描述 | 类型 |
-| ---- | ---- | ---- |
-| album | 相册权限 | `boolean` | 
-| camera | 相机权限 | `boolean` |
-| location | 定位权限 | `boolean` |
-| microphone | 麦克风权限 | `boolean` |
-| notification | 通知权限 | `boolean` |

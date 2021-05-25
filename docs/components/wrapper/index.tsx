@@ -6,7 +6,6 @@ interface WrapperProps {
 }
 
 const Wrapper: React.FC<WrapperProps> = ({ response, children }) => {
-  const [state, setState] = React.useState(response);
   return (
     <>
       <List renderHeader={() => '在应用内扫描下方二维码开始调试'}>
@@ -18,7 +17,7 @@ const Wrapper: React.FC<WrapperProps> = ({ response, children }) => {
       </List>
       {response && (
         <List renderHeader={() => '响应数据'}>
-          <pre>{JSON.stringify(state, null, 2)}</pre>
+          <pre>{JSON.stringify(response, null, 2)}</pre>
         </List>
       )}
     </>

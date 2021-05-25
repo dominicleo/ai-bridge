@@ -49,6 +49,7 @@ import {
 import {
   canUseWindow,
   isFunction,
+  isNumber,
   isPlainObject,
   JSONParse,
   resolveContent,
@@ -57,17 +58,17 @@ import {
 
 class Bridge {
   /** 调用成功 */
-  static readonly SUCCESS: 0;
+  static readonly SUCCESS = 0;
   /** 无效的方法 */
-  static readonly INVALID: 10000;
+  static readonly INVALID = 10000;
   /** 方法执行超时 */
-  static readonly TIMEOUT: 10001;
+  static readonly TIMEOUT = 10001;
   /** Bridge 未支持 */
-  static readonly NOT_SUPPORT: 10002;
+  static readonly NOT_SUPPORT = 10002;
   /** 方法被禁用 */
-  static readonly BAN: 10003;
+  static readonly BAN = 10003;
   /** 方法执行异常 */
-  static readonly ERROR: 10005;
+  static readonly ERROR = 10005;
   /** 未授权 */
   static readonly NOT_PERMISSION = 10006;
   /** 回调事件不存在 */
@@ -78,9 +79,9 @@ class Bridge {
   static readonly version = __VERSION__;
   protected uniqueId = 0;
   protected options: BridgeOptions;
-  protected trackers = new Set();
-  protected callbacks = new Map<string, BridgeCallback>();
-  protected timer = new Map<string, NodeJS.Timeout>();
+  protected static trackers = new Set();
+  protected static callbacks = new Map<string, BridgeCallback>();
+  protected static timer = new Map<string, NodeJS.Timeout>();
   constructor(options?: Partial<BridgeOptions>) {
     this.options = resolveOptions(options, { timeout: 0, timeouts: {} });
     this.init();
@@ -95,9 +96,10 @@ class Bridge {
     return [name, random, Date.now(), ++this.uniqueId].join('_');
   }
   protected clearTimeout(callbackid: string) {
-    const timer = this.timer.get(callbackid);
+    const timer = Bridge.timer.get(callbackid);
     timer && clearTimeout(timer);
-    this.timer.delete(callbackid);
+    Bridge.timer.delete(callbackid);
+    this.logger('定时器被清除', name);
   }
   protected logger(...messages: any[]) {
     if (!this.options.debug) return;
@@ -114,9 +116,9 @@ class Bridge {
     }
 
     // @ts-ignore
-    const AndroidJSBridge = window?.XiaoliJSBridge?.postMessage;
-    if (isFunction(AndroidJSBridge)) {
-      AndroidJSBridge(JSON.stringify(options));
+    if (isFunction(window?.XiaoliJSBridge?.postMessage)) {
+      // @ts-ignore
+      window.XiaoliJSBridge.postMessage(JSON.stringify(options));
       return;
     }
 
@@ -127,12 +129,14 @@ class Bridge {
       return;
     }
 
-    const task = this.callbacks.get(options.callbackid);
+    const task = Bridge.callbacks.get(options.callbackid);
+    this.clearTimeout(options.callbackid);
 
     this.handleError('Bridge 未支持', Bridge.NOT_SUPPORT, task?.onError);
   }
   protected handleError(message, code, onError: (error: BridgeError) => void) {
     const error = new BridgeError(message, code);
+    this.logger(message);
     if (isFunction(onError)) {
       onError(error);
       return;
@@ -148,17 +152,17 @@ class Bridge {
 
     const callbackid = this.getUniqueId(name);
 
-    this.callbacks.set(callbackid, { name, params, onSuccess, onError, timestamp: Date.now() });
+    Bridge.callbacks.set(callbackid, { name, params, onSuccess, onError, timestamp: Date.now() });
 
     const timeout = this.options.timeouts[name] || this.options.timeout;
 
     if (timeout > 0) {
       this.logger('注册定时器', name);
-      this.timer.set(
+      Bridge.timer.set(
         callbackid,
         setTimeout(() => {
           this.logger('方法执行超时', name);
-          this.callbacks.delete(callbackid);
+          Bridge.callbacks.delete(callbackid);
           this.handleError(`'${name}' 响应超时`, Bridge.TIMEOUT, onError);
         }, timeout),
       );
@@ -185,13 +189,13 @@ class Bridge {
   /** 接收回调 */
   receive(data: unknown) {
     const { callbackid, response } = JSONParse<BridgeReceiveResponse>(data);
-    const task = this.callbacks.get(callbackid);
+    const task = Bridge.callbacks.get(callbackid);
+    this.clearTimeout(callbackid);
+
     if (!task)
       throw new BridgeError(`回调事件不存在 ${data}`, Bridge.CALLBACK_EVENT_DOES_NOT_EXIST);
 
     if (task.__CANCEL__) return this.logger('事件已被取消监听', task.name);
-
-    this.clearTimeout(callbackid);
 
     if (response.code === Bridge.SUCCESS) {
       isFunction(task.onSuccess) && task.onSuccess(response.data);
@@ -203,14 +207,14 @@ class Bridge {
 
   off(name: string, callback: EventCallback) {
     if (!callback) throw new BridgeError('', 10008);
-    this.callbacks.forEach((value, key) => {
+    Bridge.callbacks.forEach((value, key) => {
       if (value.name === name && value.onSuccess === callback) {
-        this.callbacks.set(key, { ...value, __CANCEL__: true });
+        Bridge.callbacks.set(key, { ...value, __CANCEL__: true });
       }
     });
   }
   tracker(callback) {
-    this.trackers.add(callback);
+    Bridge.trackers.add(callback);
   }
   /** 显示提示框 */
   alert(options: ResolveContentOptions<AlertOptions>) {
@@ -374,8 +378,11 @@ class Bridge {
     return this.invokeAsync({ name: 'pushWindow', params });
   }
   /** 关闭当前页面 */
-  popWindow(options?: ResolveContentOptions<PopWindowOptions, object>) {
-    const params = resolveContent(options, { delta: 1 }, 'data', isPlainObject);
+  popWindow(options?: ResolveContentOptions<PopWindowOptions, number | object>) {
+    const isDelta = isNumber(options);
+    const key = isDelta ? 'delta' : 'data';
+    const handler = isDelta ? isNumber : isPlainObject;
+    const params = resolveContent(options, { delta: 1 }, key, handler);
     return this.invokeAsync({ name: 'popWindow', params });
   }
   /** 替换当前页面, 不会产生历史记录 */

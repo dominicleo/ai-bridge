@@ -9,6 +9,7 @@ const Page = () => {
 
   const onClick = async () => {
     try {
+      // @ts-ignore
       const response = await bridge.getSystemInfo();
       setState(response);
     } catch (error) {

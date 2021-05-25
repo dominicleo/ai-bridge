@@ -9,7 +9,7 @@
     "build-doc": "dumi build",
     "lint": "prettier packages/**/*.ts --check",
     "format": "prettier packages/**/*.ts --write",
-    "ci": "npm run init && npm run lint && npm run build && npm run test",
+    "ci": "npm run lint && npm run build",
     "test": "umi-test --coverage",
     "bootstrap": "lerna bootstrap --hoist",
     "prepub": "npm run ci",
