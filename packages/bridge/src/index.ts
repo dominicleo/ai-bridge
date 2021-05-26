@@ -260,6 +260,10 @@ class Bridge {
       }),
     });
   }
+  /** 退出登录 */
+  logout() {
+    return this.invokeAsync({ name: 'logout' });
+  }
   /** 获取用户令牌 */
   getAccessToken() {
     return this.invokeAsync<GetAccessTokenResponse>({ name: 'getAccessToken' });

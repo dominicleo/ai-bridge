@@ -45,8 +45,17 @@ const menus = {
       ],
     },
     {
-      title: '用户令牌',
-      path: '/api/system/get-access-token',
+      title: '鉴权',
+      children: [
+        {
+          title: '获取用户令牌',
+          path: '/api/system/get-access-token',
+        },
+        {
+          title: '退出登录',
+          path: '/api/system/logout',
+        },
+      ],
     },
     {
       title: '系统',
