@@ -170,6 +170,12 @@ export interface GetSystemInfoResponse {
    * - `landscape` 横屏
    */
   orientation: 'portrait' | 'landscape';
+  /** 系统识别码 */
+  systemCode: string;
+  /** 渠道 CODE */
+  channelCode: string;
+  /** 渠道 KEY */
+  channelKey: string;
 }
 
 export interface GetDeviceInfoResponse {
