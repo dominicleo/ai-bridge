@@ -5,20 +5,22 @@ hero:
   desc: 丰富的原生 API 媲美原生应用的体验
   actions:
     - text: 开始使用
-      link: ./docs
+      link: ./guide
 footer: Docs by [dumi](https://d.umijs.org)
 ---
 
-快速上手
+## 快速上手
+
 ```ts | pure
 import Bridge from '@ai/bridge';
 
-const birdge = new Bridge();
+const bridge = new Bridge({
+  // 调试模式
+  debug: true,
+});
 
-// 输出 Bridge 版本
-console.log(Bridge.version);
-
-bridge.alert('hello world').then(() => {
-  bridge.alert('你点击了确定按钮')
+// 获取用户令牌
+bridge.getAccessToken().then(({ token }) => {
+  console.log(token);
 });
 ```

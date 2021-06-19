@@ -1,6 +1,6 @@
-**/*.md
-**/package.json
-**/es
-**/lib
+package.json
+es
+lib
+dist
 .umi/
 .umi-production/

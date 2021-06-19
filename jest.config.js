@@ -1,11 +1,13 @@
+const pkg = require('./package.json');
+
 module.exports = {
   globals: {
-    __VERSION__: require('./lerna.json').version,
+    __VERSION__: pkg.version,
   },
   moduleNameMapper: {
-    '@ai/bridge$': '<rootDir>/packages/bridge/src/index.ts',
+    '@ai/bridge$': '<rootDir>/src/index.ts',
   },
   transform: {
-    '^.+\\.[t|j]sx?$': 'babel-jest',
+    '^.+\\.[t|j]sx?$': 'ts-jest',
   },
 };

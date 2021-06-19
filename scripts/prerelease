@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+
+printf "npm login:\n"
+
+npm whoami --registry=http://npm.zmops.cc/ && npm run lint && npm run build && npm run test

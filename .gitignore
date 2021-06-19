@@ -7,12 +7,11 @@
 /yarn.lock
 /package-lock.json
 
-# production
-/dist
-
 # Compiled output
-lib
 es
+lib
+dist
+build
 coverage
 
 # misc
@@ -22,7 +21,6 @@ coverage
 .umi
 .umi-production
 .umi-test
-.env.local
 
 # ide
 /.vscode

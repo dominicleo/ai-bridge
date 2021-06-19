@@ -4,13 +4,15 @@
     "moduleResolution": "node",
     "target": "es5",
     "lib": ["es2015", "dom"],
+    "jsx": "react",
     "experimentalDecorators": true,
     "skipLibCheck": true,
     "declaration": true,
-    "jsx": "react",
+    "esModuleInterop": true,
     "baseUrl": ".",
     "paths": {
-      "@ai/bridge": ["./packages/bridge"]
+      "@ai/bridge": ["src/index.ts"]
     }
-  }
+  },
+  "exclude": ["node_modules", "es", "lib", "dist"]
 }
